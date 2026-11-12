@@ -1,0 +1,15 @@
+{
+  "id": "desktop-input",
+  "name": "键盘与鼠标输入",
+  "version": "1.0.0",
+  "assembly": "DesktopInput.dll",
+  "type": "StreamUI.DesktopInput.DesktopInputPlugin",
+  "capabilities": ["input.keyboard", "input.mouse"],
+  "sdkVersion": 1,
+  "repository": "https://github.com/rorangeeee/StreamUI-Plugin-DesktopInput",
+  "build": {
+    "kind": "dotnet",
+    "project": "DesktopInput.csproj",
+    "sdkVersion": 1
+  }
+}
