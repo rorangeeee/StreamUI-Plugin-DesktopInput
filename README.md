@@ -1,6 +1,6 @@
 # Desktop Input
 
-Windows 原生键鼠输入插件。使用 Raw Input 读取物理键位、鼠标五个按键、滚轮上下和相对移动量。插件启用后可在游戏等其他窗口获得焦点时继续采集。数据通过 Core 的本地二进制通道发送。插件不转换输入文本、不记录按键历史，也不写入采集数据。
+Windows 原生键鼠输入插件。优先使用 Raw Input 读取物理键位、鼠标五个按键、滚轮上下和相对移动量。Windows 低级键鼠钩子补充全屏等场景下 Raw Input 漏掉的事件，钩子会把事件继续传给系统。数据通过 Core 的本地二进制通道发送。插件不转换输入文本、不记录按键历史，也不写入采集数据。
 
 ## 构建和启用
 
@@ -25,6 +25,6 @@ powershell.exe -NoProfile -File build.ps1 -SdkPath ../../sdk/native
 | 2 | 鼠标显示位图（含滚轮） |
 | 3–34 | 键盘当前按住位图 |
 | 35–66 | 键盘显示位图 |
-| 67–74 | `float32` 小端 X、Y 速度，向右和向下为正，单位为原始相对计数每秒（绝对定位设备为像素每秒） |
+| 67–74 | `float32` 小端 X、Y 速度，向右和向下为正。Raw Input 相对移动为原始计数每秒，绝对定位和钩子补充的光标移动为像素每秒 |
 
 鼠标位图从低位到高位依次是左、右、中、侧键 1、侧键 2、滚轮上、滚轮下。键盘使用 Windows Scan Code Set 1，`E0` 前缀映射到编号的第 7 位，Pause 使用 `0xC5`。编号 `n` 对应位图的第 `n >> 3` 个字节内的第 `n & 7` 位。物理位置与系统当前文字布局独立。[Windows Raw Input](https://learn.microsoft.com/en-us/windows/win32/inputdev/raw-input) · [Windows 扫描码表](https://learn.microsoft.com/en-us/windows/win32/inputdev/about-keyboard-input#scan-codes)

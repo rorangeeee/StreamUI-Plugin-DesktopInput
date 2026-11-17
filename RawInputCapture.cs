@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using static StreamUI.DesktopInput.Win32;
 
@@ -14,6 +15,8 @@ internal sealed class RawInputCapture : IAsyncDisposable
     private const uint DeviceNotify = 0x00002000;
     private const uint Remove = 0x00000001;
     private const int MessageOnlyWindow = -3;
+    private const int LowLevelKeyboard = 13;
+    private const int LowLevelMouse = 14;
 
     private static readonly uint HeaderSize = (uint)Marshal.SizeOf<RawHeader>();
     private static readonly uint InputSize = (uint)Marshal.SizeOf<RawInput>();
@@ -35,6 +38,8 @@ internal sealed class RawInputCapture : IAsyncDisposable
         var windowClass = new WindowClass { Instance = instance, Name = "StreamUI.RawInput." + Guid.NewGuid(), Procedure = HandleMessage };
         ushort atom = 0;
         nint window = 0;
+        nint keyboardHook = 0, mouseHook = 0;
+        HookProcedure keyboardProcedure = HandleKeyboardHook, mouseProcedure = HandleMouseHook;
         var registered = false;
         Exception? failure = null;
         try
@@ -45,6 +50,8 @@ internal sealed class RawInputCapture : IAsyncDisposable
             if (window == 0) throw LastError(nameof(CreateWindowExW));
             registered = RegisterDevices(window, InputSink | DeviceNotify);
             if (!registered) throw LastError(nameof(RegisterRawInputDevices));
+            keyboardHook = InstallHook(LowLevelKeyboard, keyboardProcedure, instance);
+            mouseHook = InstallHook(LowLevelMouse, mouseProcedure, instance);
             started.TrySetResult(window);
 
             int result;
@@ -57,14 +64,25 @@ internal sealed class RawInputCapture : IAsyncDisposable
         }
         finally
         {
+            if (mouseHook != 0) UnhookWindowsHookEx(mouseHook);
+            if (keyboardHook != 0) UnhookWindowsHookEx(keyboardHook);
             if (registered) RegisterDevices(0, Remove);
             if (window != 0) DestroyWindow(window);
             if (atom != 0) UnregisterClassW(windowClass.Name, instance);
             GC.KeepAlive(windowClass.Procedure);
+            GC.KeepAlive(keyboardProcedure);
+            GC.KeepAlive(mouseProcedure);
             input.Clear();
             if (failure is null) finished.TrySetResult();
             else finished.TrySetException(failure);
         }
+    }
+
+    private static nint InstallHook(int type, HookProcedure procedure, nint instance)
+    {
+        var hook = SetWindowsHookExW(type, procedure, instance, 0);
+        if (hook == 0) Trace.TraceWarning(LastError($"SetWindowsHookExW({type})").Message);
+        return hook;
     }
 
     private static bool RegisterDevices(nint window, uint flags) => RegisterRawInputDevices(
@@ -86,6 +104,50 @@ internal sealed class RawInputCapture : IAsyncDisposable
         if (message == InputMessage) ReadPacket(lParam);
         if (message == DeviceChangeMessage && wParam == 2) input.RemoveDevice(lParam);
         return DefWindowProcW(window, message, wParam, lParam);
+    }
+
+    private nint HandleKeyboardHook(int code, nuint message, nint data)
+    {
+        if (code == 0)
+        {
+            var key = Marshal.PtrToStructure<KeyboardHookData>(data);
+            // VK_PACKET carries Unicode text, not a physical key position.
+            if (key.VirtualKey != 0xe7)
+            {
+                var scan = ScanCode(new()
+                {
+                    MakeCode = (ushort)key.ScanCode,
+                    VirtualKey = (ushort)key.VirtualKey,
+                    Flags = (ushort)((key.Flags & 1) << 1), // LLKHF_EXTENDED to RI_KEY_E0.
+                });
+                if (scan != 0) input.ObserveHookButton(scan, (key.Flags & 0x80) == 0, Environment.TickCount64);
+            }
+        }
+        return CallNextHookEx(0, code, message, data);
+    }
+
+    private nint HandleMouseHook(int code, nuint message, nint data)
+    {
+        if (code == 0)
+        {
+            var mouse = Marshal.PtrToStructure<MouseHookData>(data);
+            var now = Environment.TickCount64;
+            var detail = (short)(mouse.MouseData >> 16);
+            switch (message)
+            {
+                case 0x0200: input.ObserveHookMotion(mouse.X, mouse.Y); break;
+                case 0x0201: case 0x0202: input.ObserveHookButton(InputState.MouseStart, message == 0x0201, now); break;
+                case 0x0204: case 0x0205: input.ObserveHookButton(InputState.MouseStart + 1, message == 0x0204, now); break;
+                case 0x0207: case 0x0208: input.ObserveHookButton(InputState.MouseStart + 2, message == 0x0207, now); break;
+                case 0x020b: case 0x020c:
+                    if (detail is 1 or 2) input.ObserveHookButton(InputState.MouseStart + 2 + detail, message == 0x020b, now);
+                    break;
+                case 0x020a:
+                    if (detail != 0) input.ObserveHookButton(detail > 0 ? InputState.ScrollUp : InputState.ScrollDown, true, now);
+                    break;
+            }
+        }
+        return CallNextHookEx(0, code, message, data);
     }
 
     private void ReadPacket(nint handle)

@@ -66,4 +66,43 @@ Check(X() > 0 && X() == -Y(), "Absolute deltas account for desktop dimensions.")
 input.Clear();
 input.WriteFrame(frame, 1700, .02);
 Check(frame.AsSpan(1).IndexOfAnyExcept((byte)0) < 0, "Stopping clears the complete input snapshot.");
+
+input.ObserveHookButton(w, true, 1800);
+input.ObserveHookButton(w, false, 1802);
+input.ObserveHookButton(InputState.MouseStart + 4, true, 1803);
+input.ObserveHookButton(InputState.ScrollDown, true, 1804);
+input.ObserveHookMotion(300, 200);
+input.ObserveHookMotion(310, 196);
+input.WriteFrame(frame, 1830, .02);
+Check(!Held(w) && Lit(w), "A hook-only short key press keeps its display pulse.");
+Check(frame[1] == 0x10 && frame[2] == 0x50 && X() == 500 && Y() == -200,
+    "Hook-only side buttons, wheel and cursor movement reach the same binary protocol.");
+input.Mouse(3, 0x0200, 0, 6, 3, null, 1840);
+input.ObserveHookMotion(340, 210);
+input.WriteFrame(frame, 1850, .02);
+Check(frame[1] == 0 && X() == 300 && Y() == 150, "Raw release clears a hook hold, and raw motion takes precedence over cursor motion.");
+
+input.Key(1, w, true, 1900);
+input.ObserveHookButton(w, true, 1901); // Keyboard hook arrives after Raw Input.
+input.Key(2, w, true, 2000);
+input.ObserveHookButton(w, false, 2010);
+input.Key(1, w, false, 2011); // Raw Input arrives after the release hook.
+input.WriteFrame(frame, 2040, .02);
+Check(Held(w), "A matched hook release preserves another physical keyboard's hold.");
+input.ObserveHookButton(w, false, 2050);
+input.WriteFrame(frame, 2080, .02);
+Check(!Held(w) && !Lit(w), "An unmatched hook release clears a press started by Raw Input.");
+
+input.ObserveHookButton(w, true, 2100);
+input.Key(1, w, true, 2101);
+input.RemoveDevice(1);
+input.WriteFrame(frame, 2130, .02);
+Check(!Held(w) && !Lit(w), "A queued duplicate hook press cannot restore an unplugged keyboard's hold.");
+
+input.ObserveHookButton(w, true, 2200);
+input.WriteFrame(frame, 2300, .02);
+Check(Held(w) && Lit(w), "A hook-only hold stays visible after the initial pulse expires.");
+input.ObserveHookButton(w, false, 2301);
+input.WriteFrame(frame, 2330, .02);
+Check(!Held(w) && !Lit(w), "A hook-only release clears the hold.");
 Console.WriteLine("Input state and binary frame checks passed.");

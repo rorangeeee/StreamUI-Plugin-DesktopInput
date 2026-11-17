@@ -1,7 +1,7 @@
 {
   "id": "desktop-input",
   "name": "键盘与鼠标输入",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "assembly": "DesktopInput.dll",
   "type": "StreamUI.DesktopInput.DesktopInputPlugin",
   "capabilities": ["input.keyboard", "input.mouse"],

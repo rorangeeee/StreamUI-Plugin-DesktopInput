@@ -5,6 +5,22 @@ namespace StreamUI.DesktopInput;
 internal static class Win32
 {
     internal delegate nint WindowProcedure(nint window, uint message, nuint wParam, nint lParam);
+    internal delegate nint HookProcedure(int code, nuint message, nint data);
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct KeyboardHookData
+    {
+        internal uint VirtualKey, ScanCode, Flags, Time;
+        internal nuint ExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct MouseHookData
+    {
+        internal int X, Y;
+        internal uint MouseData, Flags, Time;
+        internal nuint ExtraInfo;
+    }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     internal struct WindowClass
@@ -110,6 +126,16 @@ internal static class Win32
 
     [DllImport("user32.dll", ExactSpelling = true)]
     internal static extern nint DefWindowProcW(nint window, uint message, nuint wParam, nint lParam);
+
+    [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
+    internal static extern nint SetWindowsHookExW(int hook, HookProcedure procedure, nint module, uint threadId);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool UnhookWindowsHookEx(nint hook);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    internal static extern nint CallNextHookEx(nint hook, int code, nuint message, nint data);
 
     [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
