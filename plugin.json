@@ -1,7 +1,10 @@
 {
-  "id": "desktop-input",
+  "id": "when.desktop-input",
+  "legacyId": "desktop-input",
+  "author": "when",
   "name": "键盘与鼠标输入",
-  "version": "1.0.1",
+  "version": "2.0.0",
+  "license": "MIT",
   "assembly": "DesktopInput.dll",
   "type": "StreamUI.DesktopInput.DesktopInputPlugin",
   "capabilities": ["input.keyboard", "input.mouse"],
@@ -13,3 +16,4 @@
     "sdkVersion": 1
   }
 }
+

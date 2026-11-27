@@ -4,7 +4,7 @@ Windows 原生键鼠输入插件。优先使用 Raw Input 读取物理键位、�
 
 ## 构建和启用
 
-需要 Windows x64、.NET 10 SDK 和 StreamUI Core Native SDK 1。把源码放在 Core 的 `plugins/desktop-input` 目录内，并在该目录执行构建命令。
+需要 Windows x64、.NET 10 SDK 和 StreamUI Core Native SDK 1。把源码放在 Core 的 `plugins/when.desktop-input`（或开发目录 `plugins/desktop-input`）内，并在该目录执行构建命令。
 
 ```powershell
 powershell.exe -NoProfile -File build.ps1 -SdkPath ../../sdk/native
@@ -16,7 +16,7 @@ powershell.exe -NoProfile -File build.ps1 -SdkPath ../../sdk/native
 
 ## 二进制帧 v1
 
-订阅 `client.binary('desktop-input', 'frames', callback)`。每帧 75 字节，按键使用当前状态快照。变化时最多约每秒发送 60 帧，稳定时每约 200 毫秒发送一次。按住时相应位持续置 1。供显示使用的位图为短按、Pause 和滚轮保留约 80 毫秒的亮起时间。
+订阅 `client.binary('when.desktop-input', 'frames', callback)`。每帧 75 字节，按键使用当前状态快照。变化时最多约每秒发送 60 帧，稳定时每约 200 毫秒发送一次。按住时相应位持续置 1。供显示使用的位图为短按、Pause 和滚轮保留约 80 毫秒的亮起时间。
 
 | 偏移 | 数据 |
 | --- | --- |
